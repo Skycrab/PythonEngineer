@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>后端那些事</title>
+    <link rel="stylesheet" href="css/default.css" media="screen">
+  </head>
+  <body>
+    <textarea id="source">
+
+class: middle, inverse, center
+#后端那些事
+
+### yihaibo
+2015.12.25
+
+---
+
+# 后端研究什么
+
+##总结：4个一
+
+- 语言(python)
+
+- 操作系统(linux)
+
+- 存储(mysql)
+
+- 领域(web, 数据分析，web安全，密码技术)
+
+---
+
+# 语言
+一.静态语言，动态语言，弱类型语言，强类型语言
+
+- 区别
+
+- 举例
+
+    Python是动态强类型语言
+
+    Golang是静态强类型语言
+
+    C是静态弱类型语言
+
+- 反射(自省)
+
+---
+
+二.并发与并行
+
+- 区别
+
+- 举例
+
+    Erlang, Golang是天生支持并行的
+
+    Python由于GIL限制单进程只能并发
+
+---
+
+三.Python
+
+- 数据类型, 数据结构
+
+- 推导式与函数式
+
+- 算法
+
+- 反射
+
+- 属性拦截
+
+- 装饰器
+
+- 描述符和属性
+
+- 生成器
+
+- 元类
+
+- 垃圾回收
+
+- 其它
+
+
+---
+###数据类型
+所有数据类型都是对象
+```
+# 64位操作系统
+In [40]: sys.getsizeof(1)
+Out[40]: 24
+In [41]: sys.getsizeof(1L)
+Out[41]: 28
+In [42]: sys.getsizeof("")
+Out[42]: 37
+In [43]: sys.getsizeof("hello")
+Out[43]: 42
+In [44]: sys.getsizeof([])
+Out[44]: 72
+In [45]: sys.getsizeof([1])
+Out[45]: 80
+
+```
+---
+class: middle
+####什么时候2+2==5?
+```
+In [50]: 2+2
+Out[50]: 4
+
+In [51]: ctypes.memmove(id(4), id(5), 24)
+Out[51]: 11637008
+
+In [52]: 2+2
+Out[52]: 5
+
+In [53]: 4
+Out[53]: 5
+
+```
+---
+###数据结构
+
+- list, tuple, dict, set
+
+- collection.namedtuple, collection.deque, collection.OrderedDict, collections.defaultdict
+
+- Queue.Queue
+
+
+```
+Person=collections.namedtuple('Person','name age gender')
+
+p=Person("kehan", 2, "female")
+
+p.name
+Out[12]: 'kehan'
+
+```
+####思考 底层原理？？？
+
+---
+### 推导式与函数式
+
+comprehension: list, dict, set
+
+函数式: map, filter, reduce等
+
+```python
+t_columns = filter(lambda x: x.endswith("_time"),
+        model.FIELDS)
+
+t_columns = [f for f in model.FIELDS
+            if f.endswith("_time")]
+
+# 小于0置为0
+ages = [-1, 10, 20]
+
+sum([age if age >=0 else 0 for age in ages ])
+
+sum(age if age >=0 else 0 for age in ages)  # 生成器
+
+sum(map(lambda age: age if age >=0 else 0, ages))
+
+```
+
+---
+###算法
+
+####排序
+
+```
+peoples = [
+    {"age": 1, "name": "kehan"},
+    {"age": 24, "name": "lwy"},
+    {"age": 25, "name": "skycrab"},
+]
+# age从小到大,
+sorted(peoples, key=lambda p:p["age"])
+# 从大到小
+sorted(peoples, key=operator.itemgetter("age"),
+    reverse=True)
+
+operator.attrgetter     # 属性
+operator.itemgetter     #元素
+operator.methodcaller   #方法
+```
+---
+class: middle
+```
+#最大age
+max(peoples, key=operator.itemgetter("age"))
+{'age': 25, 'name': 'skycrab'}
+
+min(peoples, key=operator.itemgetter("age"))
+{'age': 25, 'name': 'skycrab'}
+
+# operator模块是一个宝藏
+a = [1, 2, 3]
+reduce(operator.imul, a)  # 6
+
+reduce(lambda x, y: x+y, a)  # 6
+
+```
+---
+
+####二分查找
+前提: 已排序数列
+
+```
+a=[1, 5, 10, 15,20]
+
+# bisect.bisect_right(a, x) 返回a中插入x的序号
+bisect.bisect_right(a, 11)
+Out[11]: 3
+
+bisect.insort_right(a,11)
+
+In [13]: a
+Out[13]: [1, 5, 10, 11, 15, 20]
+
+```
+
+---
+###堆排序
+解决TOP N问题
+
+```
+# heapq是最小堆
+
+a=[1]
+
+heapq.heappush(a, 10) # a=[1, 10]
+heapq.heappop(a)      #弹出1
+
+heapq.nlargest(2, peoples,
+    key=operator.itemgetter("age"))
+
+[{'age': 25, 'name': 'skycrab'}, {'age': 24, 'name': 'lwy'}]
+
+```
+
+---
+###反射(自省)
+
+- getattr, setattr,  hasattr, dir
+
+- \_\_dict\_\_, \_\_slots\_\_
+
+- callable, isinstance
+
+- traceback
+
+- inspect
+
+好处是什么？？？
+
+- orm
+
+---
+class:inverse
+```
+In [13]: class Person(object):
+   ....:     desc = "person object"
+   ....:     def __init__(self):
+   ....:         self.age = 100
+
+   In [14]: Person.__dict__
+   Out[14]:
+   <dictproxy {'__dict__': <attribute '__dict__' of 'Person' objects>,
+   '__doc__': None,
+   '__init__': <function __main__.__init__>,
+   '__module__': '__main__',
+   '__weakref__': <attribute '__weakref__' of 'Person' objects>,
+   'desc': 'person object'}>
+
+   In [15]: p=Person()
+   In [16]: p.__dict__
+   Out[16]: {'age': 100}
+   In [22]: hasattr(p, "age")
+   Out[22]: True
+   In [23]: getattr(p, "desc")
+   Out[23]: 'person object'
+
+ ```
+---
+class:inverse
+```
+class Point(object):
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+
+In [24]: P=Point(1,1)
+In [28]: P.__dict__
+Out[28]: {'x': 1, 'y': 1}
+In [38]: P.age=100
+
+class EPoint(object):
+    __slots__ = ("x","y")
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+
+In [33]: Ep=EPoint(1,1)
+In [35]: Ep.__dict__
+AttributeError: 'EPoint' object has no attribute '__dict__'
+In [39]: Ep.age=100
+AttributeError: 'EPoint' object has no attribute 'age'
+
+```
+---
+class:inverse
+```
+In [26]: isinstance(p, Person)
+Out[26]: True
+In [29]: callable(os.path.join)
+Out[29]: True
+In [33]: class FunCall(object):
+            def __call__(self, *args, **kwargs):
+                print(args, kwargs)
+
+In [34]: f=FunCall()
+In [35]: callable(f)
+Out[35]: True
+In [36]: f("hello", name="funcall")
+(('hello',), {'name': 'funcall'})
+
+In [10]: try:
+   ....:     1/0
+   ....: except Exception:
+   ....:     print(traceback.format_exc())
+   ....:
+   .........ZeroDivisionError: integer division or modulo by zero
+
+```
+
+---
+
+###属性拦截
+
+```
+# dataeye/statistics/bi/sdkincome.py
+class Merge(object):
+    ""获取django多个结果""
+    def __init__(self, query_set):
+        self.query_set = query_set
+    def __getattr__(self, name):
+        return sum(getattr(q, name)
+            for q in self.query_set)
+
+class ObjectDict(dict):
+    """字典当做对象使用"""
+    def __getattr__(self, name):
+        try:
+            return self[name]
+        except KeyError:
+            raise AttributeError(name)
+    def __setattr__(self, name, value):
+        self[name] = value
+```
+---
+
+```
+# dataeye/statistics/context_processors.py
+
+class PermWrapper(object):
+    def __init__(self, user):
+        self.user = user
+        self.superuser = user.is_superuser
+        self.perms = set(["101", "102"])
+
+    def __getitem__(self, module_name):
+        if hasattr(self, module_name):
+            return getattr(self, module_name)
+
+        return module_name in self.perms
+
+perm = PermWrapper()
+perm["superuser"]
+perm["101"]
+
+```
+---
+###装饰器
+- 闭包
+
+- 好处,　解耦
+
+- 面向切面编程(aop)
+
+- 用处(日志记录，权限控制，事物处理等)
+
+- 分类(不带参数，带参数，类装饰器)
+
+```
+cf = ConfigParser.ConfigParser()
+cf.read("config.ini")
+get = functools.partial(cf.get, "analyse")
+cf.get("analyse", "host")
+print(get("host"), get("db"), get("user"))
+
+```
+---
+```
+def XXX(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        # before hook
+        return func(*args, **kwargs)
+        # after hook
+    return wrapper
+
+
+def super_required(view_func):
+    """超级用户控制"""
+    @wraps(view_func)
+    def decorator(request, *args, **kwargs):
+        if request.user.is_authenticated()
+            and request.user.is_superuser:
+            return view_func(request,*args,**kwargs)
+        else:
+            return HttpResponseRedirect("/login/
+               ?next= {0}".format(request.path))
+    return decorator
+```
+
+---
+需求：使用torndb，记录执行的sql语句和执行时间
+
+属性拦截与装饰器结合
+```
+# analyse/script/fabfile.py  简化
+def log(level):
+    """记录日志"""
+    assert level in ("debug", "info", "warn", "error")
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            start = time.time()
+            result = func(*args, **kwargs)
+            write = getattr(logger, level)
+            write("sql: %s\nrun time: %s seconds",
+                args, time.time()-start)
+            return result
+        return wrapper
+    return decorator
+```
+---
+```
+# analyse/script/fabfile.py
+class Connection(object):
+    def __init__(self):
+        self.conn = torndb.Connection(HOST, DB, USER, PASSWORED)
+
+    def __getattr__(self, name):
+        func = getattr(self.conn, name)
+        return log("info")(func)
+
+conn = Connection()
+conn.get("select * from manage_ana_app where id=7")
+conn.execute("delete * from manage_ana_app")
+
+sql: select * from manage_ana_app where id=7
+run time: 0.5111111 seconds
+
+```
+---
+### 描述符和属性
+
+- 作用: 覆盖默认属性查找方式
+
+    a.x -> a.\_\_dict\_\_['x'] ->type(a).\_\_dict\_\_['x'] -> baseclass(type(a)).\_\_dict\_\_['x']
+
+- \_\_get\_\_, \_\_set\_\_, \_\_delete\_\_
+
+    数据描述符: \_\_get\_\_, \_\_set\_\_  (描述符优先)
+
+    非数据描述符: \_\_get\_\_  (\_\_dict\_\_优先)
+
+- 只支持new style objects
+
+- properties, methods, statis methods, class methods, super
+
+- classmethod实现原理
+
+详细参考:  https://docs.python.org/2/howto/descriptor.html?highlight=descriptor
+
+---
+```
+class descriptor(object):
+    def __init__(self, value):
+        self.value = value
+
+    def __get__(self, obj, type=None):
+        print obj, type
+        return self.value
+
+class Test(object):
+    def __init__(self):
+        self.age = 100
+
+    age = descriptor(200)
+
+
+t= Test()
+print(t.age)  # 
+
+```
+---
+```
+class descriptor(object):
+    def __init__(self, value):
+        self.value = value
+
+    def __get__(self, obj, type=None):
+        print obj, type
+        return self.value
+
+    def __set__(self, obj, value):
+        pass
+
+class Test(object):
+    def __init__(self):
+        self.age = 100
+
+    age = descriptor(200)
+
+
+t= Test()
+print(t.age)
+
+```
+
+---
+
+###生成器
+
+
+###上下文管理器
+```
+class cd(object):
+    def __init__(self, path):
+        self.src = os.getcwd()
+        self.dest = path
+
+    def __enter__(self):
+        os.chdir(self.dest)
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """返回True忽略异常"""
+        os.chdir(self.src)
+
+```
+---
+```
+from contextlib import contextmanager
+
+@contextmanager
+def cd(path):
+    cwd = os.getcwd()
+    try:
+        os.chdir(path)
+        yield
+    finally:
+        os.chdir(cwd)
+```
+---
+###其它
+https://docs.python.org/2/glossary.html#term-decorator
+https://docs.python.org/2/library/functions.html
+---
+class: center, middle, inverse
+# 谢谢大家
+    </textarea>
+    <script src="js/remark.min.js" type="text/javascript"></script>
+    <script type="text/javascript">
+      var slideshow = remark.create({
+        highlightStyle: 'monokai',
+        highlightLanguage: 'remark'
+      });
+    </script>
+  </body>
+</html>
