@@ -482,6 +482,8 @@ run time: 0.5111111 seconds
 
 - 只支持new style objects
 
+    描述符是由\_\_getattribute\_\_调用，只在新式类中才有
+
 - properties, methods, statis methods, class methods, super
 
 - classmethod实现原理
@@ -489,7 +491,10 @@ run time: 0.5111111 seconds
 详细参考:  https://docs.python.org/2/howto/descriptor.html?highlight=descriptor
 
 ---
+class: middle
 ```
+#非数据描述符
+
 class descriptor(object):
     def __init__(self, value):
         self.value = value
@@ -506,17 +511,18 @@ class Test(object):
 
 
 t= Test()
-print(t.age)  # 
+print(t.age)  # 100
 
 ```
 ---
 ```
+#非数据描述符
+
 class descriptor(object):
     def __init__(self, value):
         self.value = value
 
     def __get__(self, obj, type=None):
-        print obj, type
         return self.value
 
     def __set__(self, obj, value):
@@ -530,16 +536,208 @@ class Test(object):
 
 
 t= Test()
-print(t.age)
+print(t.age) # 200
+```
+---
+class: middle
+ClassMethod实现原理
+```
+class ClassMethod(object):
+     "Emulate PyClassMethod_Type() in Objects/funcobject.c"
+
+     def __init__(self, f):
+          self.f = f
+
+     def __get__(self, obj, klass=None):
+          if klass is None:
+               klass = type(obj)
+          def newfunc(*args):
+               return self.f(klass, *args)
+          return newfunc
+```
+---
+```
+# analyse/bi/util.py
+class class_property(object):
+    """ A property can decorator class or instance
+
+    class Foo(object):
+        @class_property
+        def foo(cls):
+            return 42
+
+    print(Foo.foo)
+    print(Foo().foo)
+
+    """
+    def __init__(self, func, name=None, doc=None):
+        self.__name__ = name or func.__name__
+        self.__module__ = func.__module__
+        self.__doc__ == doc or func.__doc__
+        self.func = func
+
+    def __get__(self, obj, type=None):
+        value = self.func(type)
+        return value
+```
+---
+class:middle, inverse
+```
+class cached_property(object):
+    """ A property that is only computed once per instance and
+        then replaces itself with an ordinary attribute. 
+        Deleting the attribute resets the property.
+
+        class Foo(object):
+            @cached_property
+            def foo(self):
+                return 42*100*100
+
+        print(Foo().foo)
+
+    """
+
+    def __init__(self, func):
+        self.__doc__ = getattr(func, '__doc__')
+        self.func = func
+
+    def __get__(self, obj, cls):
+        if obj is None: return self
+        value = obj.__dict__[self.func.__name__] = self.func(obj)
+        return value
 
 ```
-
 ---
+class:middle
+```
+class class_cached_property(object):
 
+    def __init__(self, func):
+        self.__doc__ = getattr(func, '__doc__')
+        self.func = func
+
+    def __get__(self, obj, cls):
+        if cls is None:
+            return self
+        value = self.func(cls)
+        setattr(cls, self.func.__name__, value)
+        return value
+```
+---
 ###生成器
+```
+In [12]: def task():
+   ....:     for x in range(2):
+   ....:         yield x
+   ....:
+In [13]: t=task()
+
+In [14]: t
+Out[14]: <generator object task at 0x00000000035F9558>
+In [15]: print(t.next())
+0
+In [16]: print(t.next())
+1
+In [17]: print(t.next())
+---------------------------------------------------------------------------
+StopIteration                             Traceback (most recent call last)
+<ipython-input-19-487d3bab2781> in <module>()
+----> 1 print(t.next())
+StopIteration:
+```
+---
+class: middle
+```
+def task():
+    begin = yield
+    print("begin",begin)
+    yield
+    for x in range(begin):
+        yield x
+
+t = task()
+t.send(None)
+t.send(2)
+print([x for x in t])
+
+result:
+('begin', 2)
+[0, 1]
+```
+---
+```
+def thread1():
+    for x in range(4):
+        yield  x
+        
+
+def thread2():
+    for x in range(4,8):
+        yield  x
+        
+
+threads=[]
+threads.append(thread1())
+threads.append(thread2())
 
 
+def run(threads): #写这个函数，模拟线程并发
+    pass
+
+run(threads)
+```
+---
+class:middle
+```
+def run(threads): #写这个函数，模拟线程并发
+    for t in threads:
+        try:
+            print t.next()
+        except StopIteration:
+            pass
+        else:
+            threads.append(t)
+结果：
+0
+4
+1
+5
+2
+6
+3
+7
+```
+---
+class:inverse
+```
+class Task(object):
+    def __init__(self):
+        self._queue = collections.deque()
+        self.work = 0
+    def add(self, gen):
+        self._queue.append(gen)
+        self.work += 1
+    def finish(self):
+        return self.work <= 0
+    def run(self):
+        while not self.finish():
+            try:
+                gen = self._queue.popleft()
+                gen.send(None)
+            except StopIteration:
+                self.work -= 1
+            else:
+                self._queue.append(gen)
+
+t=Task()
+t.add(thread1())
+t.add(thread2())
+t.run()
+```
+---
 ###上下文管理器
+
+####with 协议
 ```
 class cd(object):
     def __init__(self, path):
