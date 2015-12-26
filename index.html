@@ -626,6 +626,28 @@ class class_cached_property(object):
 ---
 ###生成器
 ```
+In [2]: g=(2*x for x in range(2))
+
+In [3]: g
+Out[3]: <generator object <genexpr> at 0x00000000043E6630>
+
+In [4]: g.next()
+Out[4]: 0
+
+In [5]: g.next()
+Out[5]: 2
+
+In [6]: g.next()
+---------------------------------------------------------------------------
+StopIteration                             Traceback (most recent call last)
+<ipython-input-6-d7e53364a9a7> in <module>()
+----> 1 g.next()
+
+StopIteration:
+
+```
+---
+```
 In [12]: def task():
    ....:     for x in range(2):
    ....:         yield x
@@ -764,6 +786,89 @@ def cd(path):
         yield
     finally:
         os.chdir(cwd)
+```
+---
+###元类
+- type
+
+```
+In [25]: class A(object):
+   ....:     pass
+   ....:
+
+In [26]: type(A)
+Out[26]: type
+
+In [27]: B = type("B", (object,), {"name":"BBB"})
+
+In [28]: B
+Out[28]: __main__.B
+
+In [30]: B.name
+Out[30]: 'BBB'
+```
+---
+- \_\_new\_\_(cls, classname, bases, dict_attr)
+- \_\_init\_\_(cls, classname, bases, dict_attr)
+
+注意：
+
+- \_\_new\_\_的cls参数是元类自己
+
+- \_\_init\_\_的cls参数是元类创建的那个类
+
+      
+```
+_extract = {}
+_site = re.compile(r".*\.(?P<site>.+?)\.com")
+def parse(url):
+    """解析视频真实地址"""
+    site = _site.search(url).group('site')
+    parser = _extract[site]
+    return parser.parse(url)
+
+parse("http://www.letv.com/ptv/vplay/1111.html")
+```
+---
+```
+class VideoMeta(type):
+    def __init__(cls, classname, bases, dict_attr):
+        """注意这里是cls, 如Video, LeTv"""
+        assert hasattr(cls, "parse")
+        assert hasattr(cls, "NAME")
+        _extract[dict_attr["NAME"]] = cls()
+        return type.__init__(cls, classname, bases, dict_attr)
+
+class Video(object):
+    __metaclass__ = VideoMeta
+    NAME = "BASE"
+    def parse(self, url):
+        raise NotImplementedError
+
+class LeTv(Video):
+    """乐视TV"""
+    NAME = "letv"
+    def parse(self, url):
+        pass
+
+```
+---
+class: middle
+```
+class UpperMeta(type):
+    """将属性修改为大写, 只能是__new__"""
+    def __new__(cls, classname, bases, dict_attr):
+        attr = {k.upper() if not k.startswith("__") else k : v for k,v in dict_attr.items()}
+        return type.__new__(cls, classname, bases, attr)
+
+
+class Person(object):
+    __metaclass__ = UpperMeta
+    name = "lwy"
+    age = 24
+
+print( "name" in Person.__dict__) #False
+print( "NAME" in Person.__dict__) #True
 ```
 ---
 ###其它
