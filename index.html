@@ -81,6 +81,8 @@ class: middle, inverse, center
 
 - 垃圾回收
 
+- 多线程与多进程
+
 - 其它
 
 
@@ -1073,6 +1075,27 @@ class _fileobject(object):
             # close() may fail if __init__ didn't complete
             pass
 ```
+---
+###多线程与多进程
+
+- 并发模型: 
+
+    多线程
+
+    异步IO  ->以回调为主(tornado, nodejs)
+
+    协程    ->gevent, golang
+
+- GIL
+
+    每执行100(sys.getcheckinterval())条指令，将切换线程
+
+- 策略
+
+    ctypes调用c库
+    
+    使用多进程
+
 ---
 ###其它
 https://docs.python.org/2/glossary.html#term-decorator
