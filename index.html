@@ -1211,7 +1211,110 @@ KEY `django_session_c25c2c28` (`expire_date`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 ```
 ---
-#领域？？？
+#领域
+---
+##高性能网络库Gevent
+
+
+ ![](img/net.png)
+
+http://nichol.as/benchmark-of-python-web-servers
+
+https://github.com/gevent/gevent/wiki/Projects(goagent,openstack)
+---
+##起源
+
+- 多进程/多线程 以linux fork为代表,如早期的apache
+
+- select/poll 多路复用
+
+- epoll/kqueue/iocp 以异步回调为主, 以nodejs为代表
+
+- 协程 以lua coroutine/golang goroutine为代表
+
+---
+##简单Tcp Server
+```
+# On Unix: Access with ``$ nc 127.0.0.1 5000``
+# On Window: Access with ``$ telnet 127.0.0.1 5000``
+
+from gevent.server import StreamServer
+
+def handle(socket, address):
+    socket.send("Hello from a telnet!\n")
+    for i in range(5):
+        socket.send(str(i) + '\n')
+    socket.close()
+
+server = StreamServer(('127.0.0.1', 5000), handle)
+server.serve_forever()
+```
+---
+##原理 coroutine
+
+ ![](img/coroutine.jpeg)
+
+---
+##背后的力量
+
+- libev C写的高性能网络库(对比memcache使用libevent)
+
+- greenlet Python协程实现(对比lua coroutine/golang goroutine)
+
+- c-ares 异步DNS请求
+
+- cython
+
+##现实世界应用
+
+- 借助gevent让flask(django)拥有实时推送能力(对比tornado)
+
+（http://xlambda.com/gevent-tutorial/#server_2）
+
+- 游戏后端框架(https://github.com/9miao/Firefly)
+
+- 爬虫
+
+。。。
+
+---
+定时任务
+
+```
+def f():
+    print time.time()
+    print 'eeeee'
+from gevent.core import loop
+l = loop()
+timer = l.timer(2,3) #2秒后启动，3秒后再次启动
+print time.time()
+timer.start(f)
+l.run()
+```
+
+---
+##借助greenlet自己写一个gevent
+
+```
+def accept(self):
+    while True:
+        try:
+            print("accept")
+            client_sock, address = self.sock.accept()
+            break
+        except socket.error as e:
+            print(e)
+            if e.args[0] != errno.EAGAIN:
+                raise
+        # switch是回调函数，当loop回调时会再次回到这里
+        switch = rawgreenlet.getcurrent().switch
+        # 注册读事件，当sock可读时调用回调函数
+        ioloop.wait(self.sock, switch, ioloop.READ)
+```
+
+
+参考:
+https://github.com/Skycrab/code/blob/master/Python/mygevent.py
 ---
 class: center, middle, inverse
 # 谢谢大家
